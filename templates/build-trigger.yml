@@ -1,0 +1,24 @@
+name: 触发公开仓库构建
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 通知公开仓库构建
+        env:
+          TOKEN: ${{ secrets.PUB_TRIGGER_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          PAYLOAD=$(printf '{"event_type":"build","client_payload":{"tag":"%s","version":"%s"}}' "$TAG" "$VERSION")
+          HTTP=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/OWNER/PUB_REPO_NAME/dispatches" \
+            -d "$PAYLOAD")
+          echo "dispatch HTTP $HTTP"
+          [ "$HTTP" = "204" ]
